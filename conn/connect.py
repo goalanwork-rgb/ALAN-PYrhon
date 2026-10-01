@@ -6,9 +6,7 @@ import mysql.connector
 
 
 def get_connection():
-    password = os.getenv("alan1123")
-    if password is None:
-        raise RuntimeError("Set the MYSQL_PASSWORD environment variable.")
+    password = os.getenv("MYSQL_PASSWORD", "alan1123")
 
     return mysql.connector.connect(
         host=os.getenv("MYSQL_HOST", "127.0.0.1"),

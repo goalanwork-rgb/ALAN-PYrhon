@@ -26,10 +26,24 @@
             padding: 0 24px;
         }
         .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+        .toolbar-actions, .row-actions, .form-actions { display: flex; align-items: center; gap: 8px; }
         #status { color: #577186; font-size: 14px; }
         button { border: 0; border-radius: 4px; background: #cbe2f4; color: #285675; padding: 9px 14px; font: inherit; cursor: pointer; }
         button:hover { background: #b8d8ef; }
         button:disabled { cursor: wait; opacity: .65; }
+        button.secondary { background: #e8eef2; color: #475c69; }
+        button.secondary:hover { background: #dbe4e9; }
+        button.danger { background: #f7e2df; color: #943b33; }
+        button.danger:hover { background: #f0cfca; }
+        .editor { margin-bottom: 18px; padding: 18px 0; border-top: 1px solid #cbddec; border-bottom: 1px solid #cbddec; }
+        .editor[hidden] { display: none; }
+        .editor h2 { margin: 0 0 14px; color: #234766; font-size: 18px; }
+        .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; max-width: 720px; }
+        label { display: grid; gap: 6px; color: #365e7d; font-size: 13px; }
+        input { width: 100%; min-width: 0; border: 1px solid #b9ccda; border-radius: 4px; padding: 10px 11px; color: #233b4e; font: inherit; }
+        input:focus { outline: 2px solid #7caac7; outline-offset: 1px; }
+        .form-actions { margin-top: 14px; }
+        #form-status { min-height: 1.4em; margin: 8px 0 0; color: #a3342b; font-size: 13px; }
         .table-wrap { overflow-x: auto; border: 1px solid #cbddec; background: #fff; }
         table { width: 100%; border-collapse: collapse; text-align: left; }
         th, td { padding: 13px 16px; border-bottom: 1px solid #e0eaf2; white-space: nowrap; }
@@ -39,10 +53,14 @@
         tbody tr:last-child td { border-bottom: 0; }
         .message { padding: 24px 16px; color: #667c8c; text-align: center; }
         .message.error { color: #a3342b; }
+        .row-actions button { padding: 7px 10px; }
         @media (max-width: 480px) {
             header { padding: 22px 18px; }
             main { margin-top: 20px; padding: 0 12px; }
             th, td { padding: 11px 12px; }
+            .form-grid { grid-template-columns: 1fr; }
+            .toolbar { align-items: flex-start; }
+            .toolbar-actions { flex-wrap: wrap; justify-content: flex-end; }
         }
     </style>
 </head>
@@ -54,12 +72,31 @@
 <main>
     <div class="toolbar">
         <span id="status" role="status" aria-live="polite">載入中...</span>
-        <button id="refresh" type="button">重新整理</button>
+        <div class="toolbar-actions">
+            <button id="add-user" type="button">新增會員</button>
+            <button id="refresh" class="secondary" type="button">重新整理</button>
+        </div>
     </div>
+    <form id="user-form" class="editor" hidden>
+        <h2 id="form-title">新增會員</h2>
+        <div class="form-grid">
+            <label>姓名
+                <input id="name" name="name" type="text" maxlength="255" autocomplete="name" required>
+            </label>
+            <label>Email
+                <input id="email" name="email" type="email" maxlength="255" autocomplete="email" required>
+            </label>
+        </div>
+        <div class="form-actions">
+            <button id="save-user" type="submit">儲存</button>
+            <button id="cancel-edit" class="secondary" type="button">取消</button>
+        </div>
+        <p id="form-status" role="alert"></p>
+    </form>
     <div class="table-wrap">
         <table>
-            <thead><tr><th>ID</th><th>姓名</th><th>Email</th><th>建立時間</th></tr></thead>
-            <tbody id="users"><tr><td class="message" colspan="4">正在讀取資料...</td></tr></tbody>
+            <thead><tr><th>ID</th><th>姓名</th><th>Email</th><th>建立時間</th><th>操作</th></tr></thead>
+            <tbody id="users"><tr><td class="message" colspan="5">正在讀取資料...</td></tr></tbody>
         </table>
     </div>
 </main>
@@ -67,15 +104,57 @@
     const tableBody = document.querySelector('#users');
     const statusLabel = document.querySelector('#status');
     const refreshButton = document.querySelector('#refresh');
+    const addButton = document.querySelector('#add-user');
+    const userForm = document.querySelector('#user-form');
+    const formTitle = document.querySelector('#form-title');
+    const formStatus = document.querySelector('#form-status');
+    const saveButton = document.querySelector('#save-user');
+    let editingUserId = null;
 
     function showMessage(message, isError = false) {
         const row = document.createElement('tr');
         const cell = document.createElement('td');
-        cell.colSpan = 4;
+        cell.colSpan = 5;
         cell.className = isError ? 'message error' : 'message';
         cell.textContent = message;
         row.append(cell);
         tableBody.replaceChildren(row);
+    }
+
+    async function requestJSON(url, options = {}) {
+        const response = await fetch(url, {
+            ...options,
+            headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...options.headers },
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || '操作失敗，請稍後再試。');
+        return payload;
+    }
+
+    function openEditor(user = null) {
+        editingUserId = user?.id ?? null;
+        formTitle.textContent = user ? '修改會員' : '新增會員';
+        userForm.elements.name.value = user?.name ?? '';
+        userForm.elements.email.value = user?.email ?? '';
+        formStatus.textContent = '';
+        userForm.hidden = false;
+        userForm.elements.name.focus();
+    }
+
+    function closeEditor() {
+        userForm.hidden = true;
+        userForm.reset();
+        formStatus.textContent = '';
+        editingUserId = null;
+    }
+
+    function createActionButton(label, className, onClick) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = label;
+        button.className = className;
+        button.addEventListener('click', onClick);
+        return button;
     }
 
     async function loadUsers() {
@@ -83,9 +162,7 @@
         statusLabel.textContent = '載入中...';
         showMessage('正在讀取資料...');
         try {
-            const response = await fetch('/api/users', { headers: { Accept: 'application/json' } });
-            if (!response.ok) throw new Error('無法連線至資料庫，請確認連線設定。');
-            const users = await response.json();
+            const users = await requestJSON('/api/users');
             statusLabel.textContent = `共 ${users.length} 筆資料`;
             if (users.length === 0) {
                 showMessage('目前沒有資料');
@@ -98,6 +175,15 @@
                     cell.textContent = value ?? '';
                     row.append(cell);
                 });
+                const actions = document.createElement('td');
+                const actionGroup = document.createElement('div');
+                actionGroup.className = 'row-actions';
+                actionGroup.append(
+                    createActionButton('修改', 'secondary', () => openEditor(user)),
+                    createActionButton('刪除', 'danger', () => deleteUser(user)),
+                );
+                actions.append(actionGroup);
+                row.append(actions);
                 return row;
             });
             tableBody.replaceChildren(...rows);
@@ -109,6 +195,43 @@
         }
     }
 
+    async function deleteUser(user) {
+        if (!window.confirm(`確定刪除「${user.name}」嗎？此操作無法復原。`)) return;
+        try {
+            await requestJSON(`/api/users/${user.id}`, { method: 'DELETE' });
+            await loadUsers();
+            statusLabel.textContent = '會員已刪除';
+        } catch (error) {
+            statusLabel.textContent = '操作失敗';
+            showMessage(error.message, true);
+        }
+    }
+
+    userForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        saveButton.disabled = true;
+        formStatus.textContent = '';
+        const isEditing = editingUserId !== null;
+        try {
+            await requestJSON(isEditing ? `/api/users/${editingUserId}` : '/api/users', {
+                method: isEditing ? 'PUT' : 'POST',
+                body: JSON.stringify({
+                    name: userForm.elements.name.value,
+                    email: userForm.elements.email.value,
+                }),
+            });
+            closeEditor();
+            await loadUsers();
+            statusLabel.textContent = isEditing ? '會員已更新' : '會員已新增';
+        } catch (error) {
+            formStatus.textContent = error.message;
+        } finally {
+            saveButton.disabled = false;
+        }
+    });
+
+    addButton.addEventListener('click', () => openEditor());
+    document.querySelector('#cancel-edit').addEventListener('click', closeEditor);
     refreshButton.addEventListener('click', loadUsers);
     loadUsers();
 </script>
