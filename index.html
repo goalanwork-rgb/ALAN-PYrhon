@@ -18,6 +18,8 @@
             margin: 0;
         }
         header { background: #dcecf9; color: #234766; padding: 28px max(24px, calc((100% - 1080px) / 2)); }
+        .header-brand { display: flex; align-items: center; gap: 14px; }
+        .python-mark { width: 44px; height: 44px; flex: 0 0 44px; }
         header p { margin: 0 0 5px; color: #557c9a; font: 13px Consolas, monospace; }
         h1 { margin: 0; font-size: 25px; font-weight: 600; }
         main {
@@ -66,8 +68,19 @@
 </head>
 <body>
 <header>
-    <p>PYTHON / MYSQL</p>
-    <h1>會員資料列表</h1>
+    <div class="header-brand">
+        <svg class="python-mark" viewBox="0 0 48 48" role="img" aria-labelledby="python-logo-title" xmlns="http://www.w3.org/2000/svg">
+            <title id="python-logo-title">Python</title>
+            <path fill="#3776AB" d="M23 3c-10 0-11 5-11 11v5h13v3H7c-4 0-6 3-6 7v4c0 4 3 7 7 7h4v-7c0-6 4-9 10-9h13V14C35 6 31 3 23 3z"/>
+            <circle cx="19" cy="10" r="2" fill="#fff"/>
+            <path fill="#FFD43B" d="M25 45c10 0 11-5 11-11v-5H23v-3h18c4 0 6-3 6-7v-4c0-4-3-7-7-7h-4v7c0 6-4 9-10 9H13v8c0 8 4 13 12 13z"/>
+            <circle cx="29" cy="38" r="2" fill="#fff"/>
+        </svg>
+        <div>
+            <p>PYTHON / MYSQL</p>
+            <h1>會員資料列表</h1>
+        </div>
+    </div>
 </header>
 <main>
     <div class="toolbar">
