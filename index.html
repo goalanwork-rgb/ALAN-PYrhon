@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#dcecf9">
+    <title>py_user 會員列表</title>
+    <style>
+        :root {
+            color-scheme: light;
+            font-family: "Trebuchet MS", "Noto Sans TC", sans-serif;
+            color: #233b4e;
+            background: #eef5fb;
+        }
+        * { box-sizing: border-box; }
+        body {
+            min-height: 100vh;
+            margin: 0;
+        }
+        header { background: #dcecf9; color: #234766; padding: 28px max(24px, calc((100% - 1080px) / 2)); }
+        header p { margin: 0 0 5px; color: #557c9a; font: 13px Consolas, monospace; }
+        h1 { margin: 0; font-size: 25px; font-weight: 600; }
+        main {
+            max-width: 1080px;
+            margin: 30px auto;
+            padding: 0 24px;
+        }
+        .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+        #status { color: #577186; font-size: 14px; }
+        button { border: 0; border-radius: 4px; background: #cbe2f4; color: #285675; padding: 9px 14px; font: inherit; cursor: pointer; }
+        button:hover { background: #b8d8ef; }
+        button:disabled { cursor: wait; opacity: .65; }
+        .table-wrap { overflow-x: auto; border: 1px solid #cbddec; background: #fff; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 13px 16px; border-bottom: 1px solid #e0eaf2; white-space: nowrap; }
+        th { background: #e4f0fa; color: #365e7d; font-size: 13px; font-weight: 600; }
+        td { font-size: 14px; }
+        tbody tr:hover { background: #f3f9fe; }
+        tbody tr:last-child td { border-bottom: 0; }
+        .message { padding: 24px 16px; color: #667c8c; text-align: center; }
+        .message.error { color: #a3342b; }
+        @media (max-width: 480px) {
+            header { padding: 22px 18px; }
+            main { margin-top: 20px; padding: 0 12px; }
+            th, td { padding: 11px 12px; }
+        }
+    </style>
+</head>
+<body>
+<header>
+    <p>PYTHON / MYSQL</p>
+    <h1>會員資料列表</h1>
+</header>
+<main>
+    <div class="toolbar">
+        <span id="status" role="status" aria-live="polite">載入中...</span>
+        <button id="refresh" type="button">重新整理</button>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>ID</th><th>姓名</th><th>Email</th><th>建立時間</th></tr></thead>
+            <tbody id="users"><tr><td class="message" colspan="4">正在讀取資料...</td></tr></tbody>
+        </table>
+    </div>
+</main>
+<script>
+    const tableBody = document.querySelector('#users');
+    const statusLabel = document.querySelector('#status');
+    const refreshButton = document.querySelector('#refresh');
+
+    function showMessage(message, isError = false) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 4;
+        cell.className = isError ? 'message error' : 'message';
+        cell.textContent = message;
+        row.append(cell);
+        tableBody.replaceChildren(row);
+    }
+
+    async function loadUsers() {
+        refreshButton.disabled = true;
+        statusLabel.textContent = '載入中...';
+        showMessage('正在讀取資料...');
+        try {
+            const response = await fetch('/api/users', { headers: { Accept: 'application/json' } });
+            if (!response.ok) throw new Error('無法連線至資料庫，請確認連線設定。');
+            const users = await response.json();
+            statusLabel.textContent = `共 ${users.length} 筆資料`;
+            if (users.length === 0) {
+                showMessage('目前沒有資料');
+                return;
+            }
+            const rows = users.map(user => {
+                const row = document.createElement('tr');
+                [user.id, user.name, user.email, user.date_time].forEach(value => {
+                    const cell = document.createElement('td');
+                    cell.textContent = value ?? '';
+                    row.append(cell);
+                });
+                return row;
+            });
+            tableBody.replaceChildren(...rows);
+        } catch (error) {
+            statusLabel.textContent = '載入失敗';
+            showMessage(error.message, true);
+        } finally {
+            refreshButton.disabled = false;
+        }
+    }
+
+    refreshButton.addEventListener('click', loadUsers);
+    loadUsers();
+</script>
+</body>
+</html>
